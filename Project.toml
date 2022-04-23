@@ -1,0 +1,4 @@
+name = "MyMnistFlux"
+uuid = "8d881220-337c-47e7-a116-8ccc2f465258"
+authors = ["Guillaume THOMAS <guillaume1.thomas@epita.fr>"]
+version = "0.1.0"
