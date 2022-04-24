@@ -91,20 +91,6 @@ begin
 	test_data = [(x_test, y_test)]
 end;
 
-# ╔═╡ 0381674a-eb4c-4ec6-8881-70e830ea9ef0
-begin
-	using Statistics:mean
-	
-	accuracy(X, Y) = round(mean(Flux.onecold(model(X)) .- 1 .== Y), digits=3)
-	
-	md"""
-	### How accurate is it ?
-	
-	Training accuracy: $(accuracy(x_train, y_train_cold))\
-	Testing  accuracy: $(accuracy(x_test, y_test_cold))
-	"""
-end
-
 # ╔═╡ 93ab28d1-7598-433e-8157-4ce8da1fd18c
 md"""
 # Let's starts training
@@ -124,13 +110,71 @@ begin
 		append!(train_losses, loss(train_data[1]...))
 		append!(test_losses, loss(test_data[1]...))
 	end
-end
+end;
 
 # ╔═╡ 97cacc55-8364-450a-a556-a7f8b8e2a605
-md"""
-## First model analysis
-### What our model is able to predict ?
-"""
+begin
+	train_pred = Flux.onecold(model(x_train), 0:nb_class - 1)
+	test_pred = Flux.onecold(model(x_test), 0:nb_class - 1)
+	
+	md"""
+	## First model analysis
+	### What our model is able to predict ?
+	"""
+end
+
+# ╔═╡ f50c600d-0cea-40d9-91ec-267979d285e7
+begin
+	using Statistics:mean
+	
+	struct ROC
+		tp # True Positive
+		tn # True Negative
+		fp # False Positive
+		fn # False Negative
+	end
+
+	"""
+	Returns the ROC struct filled for the Ground Truth Classes (`gt`)
+	and the Predicted Classes (`pred`)
+	"""
+	function get_ROC(gt, pred)
+		tp = [sum((gt .== class_) .&& (pred .== class_))
+			  for class_ in 0:nb_class - 1]
+		
+		tn = [sum((gt .!= class_) .&& (pred .!= class_))
+			  for class_ in 0:nb_class - 1]
+		
+		fp = [sum((gt .!= class_) .&& (pred .== class_))
+			  for class_ in 0:nb_class - 1]
+		
+		fn = [sum((gt .== class_) .&& (pred .!= class_))
+			  for class_ in 0:nb_class - 1]
+
+		return ROC(tp, tn, fp, fn)
+	end
+
+	roc_train = get_ROC(y_train_cold, train_pred)
+	roc_test = get_ROC(y_test_cold, test_pred)
+
+	precision(r) = mean(@. r.tp / (r.tp + r.fp)) # Should be a weighted mean instead
+	recall(r) = mean(@. r.tp / (r.tp + r.fn)) # Should be a weighted mean instead
+	f1score(r) = 2 * precision(r) * recall(r) / (precision(r) + recall(r))
+	
+	md"""
+	### How accurate is it ?
+	
+	#### Training
+	- Precision: $(round(precision(roc_train), digits=3))
+	- Recall:  $(round(recall(roc_train), digits=3))
+	- F1score:  $(round(f1score(roc_train), digits=3))
+	
+	#### Testing
+	- Precision: $(round(precision(roc_test), digits=3))
+	- Recall:  $(round(recall(roc_test), digits=3))
+	- F1score:  $(round(f1score(roc_test), digits=3))
+	"""
+end
 
 # ╔═╡ d6a0e739-f13a-460a-8dce-758136137361
 begin
@@ -142,10 +186,10 @@ end
 
 # ╔═╡ 62447a59-87db-4d1a-9850-012639e4ba28
 plot(Gray.(x_test_raw[:, :, test_it]'),
-	title="Prediction: $(Flux.onecold(model(x_test[:, test_it])) - 1)" *
+	title="Prediction: $(test_pred[test_it])" *
 		  " | " *
-	      "Label: $(y_test_cold[test_it])",
-	axis = nothing)
+		  "Label: $(y_test_cold[test_it])",
+	axis=nothing)
 
 # ╔═╡ 26563948-4f6d-4df2-a83b-36858de05189
 md"""
@@ -179,6 +223,7 @@ md"""
 - Batch
 	DataLoader(x_train, y_train, batchsize=...)
 - Other optimizer (like ADAM)
+	https://fluxml.ai/Flux.jl/stable/training/optimisers/
 - Other losses (like logitcrossentropy)
 	https://fluxml.ai/Flux.jl/stable/models/losses/
 - CNN
@@ -2073,7 +2118,7 @@ version = "0.9.1+5"
 # ╟─97cacc55-8364-450a-a556-a7f8b8e2a605
 # ╟─d6a0e739-f13a-460a-8dce-758136137361
 # ╟─62447a59-87db-4d1a-9850-012639e4ba28
-# ╟─0381674a-eb4c-4ec6-8881-70e830ea9ef0
+# ╟─f50c600d-0cea-40d9-91ec-267979d285e7
 # ╟─26563948-4f6d-4df2-a83b-36858de05189
 # ╟─04da370a-c0a6-4faa-afa4-96fd503008a5
 # ╠═21dcbfcf-3af7-4ae3-a242-6bad74cbceb3
