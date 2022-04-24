@@ -29,6 +29,8 @@ md"""
 begin
 	x_train_raw, y_train_cold = MLDatasets.MNIST.traindata(Float32);
 	x_test_raw, y_test_cold = MLDatasets.MNIST.testdata(Float32);
+
+	nb_class = 10
 end;
 
 # ╔═╡ 8893bad4-c41b-4941-8aab-fdf03d4b64d1
@@ -64,7 +66,7 @@ The model use the classic **MSE** loss function and a gradient **Descent** as th
 begin
 	model = Flux.Chain(
 	    Dense(784, 256, relu),
-	    Dense(256, 10, relu),
+	    Dense(256, nb_class, relu),
 		softmax
 	)
 	parameters = Flux.params(model)
@@ -79,8 +81,8 @@ md"""
 
 # ╔═╡ 7f266327-ff46-4ba1-be38-733882bcd8df
 begin
-	y_train = Flux.onehotbatch(y_train_cold, 0:9)
-	y_test = Flux.onehotbatch(y_test_cold, 0:9)
+	y_train = Flux.onehotbatch(y_train_cold, 0:nb_class - 1)
+	y_test = Flux.onehotbatch(y_test_cold, 0:nb_class - 1)
 
 	x_train = Flux.flatten(x_train_raw)
 	x_test = Flux.flatten(x_test_raw)
@@ -109,7 +111,7 @@ md"""
 """
 
 # ╔═╡ 2e9f2fe3-db85-4738-a786-9ba12ed98baa
-nb_epochs = 40;
+nb_epochs = 100;
 
 # ╔═╡ c8daff97-9c62-4fc2-bafe-312a4594bee7
 begin
