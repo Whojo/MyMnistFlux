@@ -157,9 +157,32 @@ begin
 	roc_train = get_ROC(y_train_cold, train_pred)
 	roc_test = get_ROC(y_test_cold, test_pred)
 
-	precision(r) = mean(@. r.tp / (r.tp + r.fp)) # Should be a weighted mean instead
-	recall(r) = mean(@. r.tp / (r.tp + r.fn)) # Should be a weighted mean instead
-	f1score(r) = 2 * precision(r) * recall(r) / (precision(r) + recall(r))
+	function precision(r)
+		tp = r.tp
+		fp = r.fp
+		fp[r.tp .== 0] .= 1
+		
+		return mean(@. tp / (tp + fp)) # Should be a weighted mean instead
+	end
+		
+	function recall(r)
+		tp = r.tp
+		fn = r.fn
+		fn[r.tp .== 0] .= 1
+			
+		return mean(@. tp / (tp + fn)) # Should be a weighted mean instead
+	end
+		
+	function f1score(r)
+		prec = precision(r)
+		rec = recall(r)
+
+		if (prec == 0 || rec == 0)
+			return 0
+		end
+		
+		return 2 * prec * rec / (prec + rec)
+	end
 	
 	md"""
 	### How accurate is it ?
