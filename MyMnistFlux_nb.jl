@@ -286,6 +286,7 @@ begin
 	- F1score:  $(round(f1score(roc_test_batch), digits=3))
 
 	The results start to be interesting !
+	How can we improve them even further ?
 	"""
 end
 
@@ -296,8 +297,100 @@ md"""
 	https://fluxml.ai/Flux.jl/stable/training/optimisers/
 - Other losses (like logitcrossentropy)
 	https://fluxml.ai/Flux.jl/stable/models/losses/
-- CNN
 """
+
+# ╔═╡ d874ede6-c545-4c38-bd25-63604d2fbbbc
+md"""
+# Let's try a more complex model: a CNN
+"""
+
+# ╔═╡ f364f317-c365-411e-849e-94eff49b8204
+md"""
+## The data
+"""
+
+# ╔═╡ 2ddd7f9b-5b6f-45c0-b158-ed6481b105e6
+begin
+	x_train_cnn = Flux.unsqueeze(x_train_raw, 3)
+	x_test_cnn = Flux.unsqueeze(x_test_raw, 3)
+	
+	train_data_cnn = Flux.DataLoader((x_train_cnn, y_train), batchsize=batchsize)
+end;
+
+# ╔═╡ 5cc15eef-8bcf-470e-9c60-f4d7e55739cf
+md"""
+## The model
+"""
+
+# ╔═╡ c38b60a9-88b6-4a55-abce-c714bd6646ae
+model_cnn = Chain(
+	Flux.Conv((3, 3), 1=>8, relu),
+	Flux.MaxPool((2, 2)),
+	Flux.Conv((3, 3), 8=>16, relu),
+	Flux.MaxPool((2, 2)),
+	Flux.Conv((3, 3), 16=>32, relu),
+	Flux.MaxPool((2, 2)),
+	Flux.flatten,
+	
+	Flux.Dense(32, nb_class),
+	Flux.softmax
+);
+
+# ╔═╡ d13b3d9f-2b0c-4641-aa83-da5a6f3e6f45
+loss_cnn(x, y) = Flux.Losses.mse(model_cnn(x), y);
+
+# ╔═╡ 0684d77e-132d-4bfa-a06f-2b413bedcb29
+begin
+	nb_epochs_3 = 4 # 100
+	parameters_cnn = Flux.params(model_cnn)
+	
+	train_losses_cnn = []
+	test_losses_cnn = []
+
+	@Flux.epochs nb_epochs_2 begin
+	    Flux.train!(loss_cnn, parameters_cnn, train_data_cnn, optimizer)
+		
+		append!(train_losses_cnn, loss_cnn(x_train_cnn, y_train))
+		append!(test_losses_cnn, loss_cnn(x_test_cnn, y_test))
+	end
+end;
+
+# ╔═╡ 1238bac8-c855-49c3-85c5-0adce2df5fb2
+begin
+	train_cnn_pred = Flux.onecold(model_cnn(x_train_cnn), 0:nb_class - 1)
+	test_cnn_pred = Flux.onecold(model_cnn(x_test_cnn), 0:nb_class - 1)
+
+	roc_train_cnn = get_ROC(y_train_cold, train_cnn_pred)
+	roc_test_cnn = get_ROC(y_test_cold, test_cnn_pred)
+	md"""
+	### How accurate is it ?
+	
+	#### Training
+	- Precision: $(round(precision(roc_train_cnn), digits=3))
+	- Recall:  $(round(recall(roc_train_cnn), digits=3))
+	- F1score:  $(round(f1score(roc_train_cnn), digits=3))
+	
+	#### Testing
+	- Precision: $(round(precision(roc_test_cnn), digits=3))
+	- Recall:  $(round(recall(roc_test_cnn), digits=3))
+	- F1score:  $(round(f1score(roc_test_cnn), digits=3))
+	"""
+end
+
+# ╔═╡ caf7c264-edac-4139-8e36-cae1d0f3dc61
+md"""
+### Did it overfit/ underfit ?
+i.e. Is the training loss still improving while the testing loss is no longer decreasing ?
+"""
+
+# ╔═╡ 6a6e1281-4d81-4140-9053-739f9858734c
+begin
+	range_3 = 1:nb_epochs_3
+	plot(range_3, train_losses_cnn, label="Train loss", title="Evolution of Train & Test loss")
+	plot!(range_3, test_losses_cnn, label="Test loss")
+	xlabel!("Number of iterations")
+	ylabel!("Loss")
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2193,6 +2286,18 @@ version = "0.9.1+5"
 # ╟─04da370a-c0a6-4faa-afa4-96fd503008a5
 # ╠═21dcbfcf-3af7-4ae3-a242-6bad74cbceb3
 # ╟─6c727f20-a2f4-49e4-a59e-52e99b419fbb
-# ╠═1ac1ca44-64a0-43b8-9ec0-b6ae147fe9e6
+# ╠═ae986386-f4e5-4cc3-ba4f-773b60e69fe0
+# ╟─c5b0d460-51f4-4c29-8bf5-58a7b64a7656
+# ╟─1ac1ca44-64a0-43b8-9ec0-b6ae147fe9e6
+# ╟─d874ede6-c545-4c38-bd25-63604d2fbbbc
+# ╟─f364f317-c365-411e-849e-94eff49b8204
+# ╠═2ddd7f9b-5b6f-45c0-b158-ed6481b105e6
+# ╟─5cc15eef-8bcf-470e-9c60-f4d7e55739cf
+# ╠═c38b60a9-88b6-4a55-abce-c714bd6646ae
+# ╠═d13b3d9f-2b0c-4641-aa83-da5a6f3e6f45
+# ╠═0684d77e-132d-4bfa-a06f-2b413bedcb29
+# ╟─1238bac8-c855-49c3-85c5-0adce2df5fb2
+# ╟─caf7c264-edac-4139-8e36-cae1d0f3dc61
+# ╟─6a6e1281-4d81-4140-9053-739f9858734c
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
