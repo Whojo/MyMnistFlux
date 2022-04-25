@@ -97,7 +97,7 @@ md"""
 """
 
 # ╔═╡ 2e9f2fe3-db85-4738-a786-9ba12ed98baa
-nb_epochs = 100;
+nb_epochs = 100; #1000;
 
 # ╔═╡ c8daff97-9c62-4fc2-bafe-312a4594bee7
 begin
@@ -119,7 +119,6 @@ begin
 	
 	md"""
 	## First model analysis
-	### What our model is able to predict ?
 	"""
 end
 
@@ -203,6 +202,7 @@ end
 begin
 	nb_test_images = size(x_test_raw)[3]
 	md"""
+	### What our model is able to predict ?
 	##### Testing image $(@bind test_it Slider(1:nb_test_images, show_value=true)) / $nb_test_images
 	"""
 end
@@ -230,21 +230,68 @@ begin
 end
 
 # ╔═╡ 21dcbfcf-3af7-4ae3-a242-6bad74cbceb3
-md"""
-### Where does it fail mostly ?
-**PRINT CONFUSION MATRIX**
-"""
+# ╠═╡ disabled = true
+#=╠═╡
+begin
+	md"""
+	### Where does it fail mostly ?
+	Here is the confusion matrix of the model on testing set:
+	"""
+end
+  ╠═╡ =#
 
 # ╔═╡ 6c727f20-a2f4-49e4-a59e-52e99b419fbb
 md"""
-Seems to works well, but we can do better !
+Seems to works fine, but we can do better !
+Let's continue the training with some batch to faster the convergence.
 """
+
+# ╔═╡ ae986386-f4e5-4cc3-ba4f-773b60e69fe0
+begin
+	batchsize = 32
+	nb_epochs_2 = 4 # 100
+	
+	train_data_batch = Flux.DataLoader((x_train, y_train), batchsize=batchsize)
+	
+	train_losses_batch = []
+	test_losses_batch = []
+
+	@Flux.epochs nb_epochs_2 begin
+	    Flux.train!(loss, parameters, train_data_batch, optimizer)
+		
+		append!(train_losses_batch, loss(train_data[1]...))
+		append!(test_losses_batch, loss(test_data[1]...))
+	end
+end;
+
+# ╔═╡ c5b0d460-51f4-4c29-8bf5-58a7b64a7656
+begin
+	train_batch_pred = Flux.onecold(model(x_train), 0:nb_class - 1)
+	test_batch_pred = Flux.onecold(model(x_test), 0:nb_class - 1)
+	
+	roc_train_batch = get_ROC(y_train_cold, train_batch_pred)
+	roc_test_batch = get_ROC(y_test_cold, test_batch_pred)
+	
+	md"""
+	### How accurate is it now ?
+	
+	#### Training
+	- Precision: $(round(precision(roc_train_batch), digits=3))
+	- Recall:  $(round(recall(roc_train_batch), digits=3))
+	- F1score:  $(round(f1score(roc_train_batch), digits=3))
+	
+	#### Testing
+	- Precision: $(round(precision(roc_test_batch), digits=3))
+	- Recall:  $(round(recall(roc_test_batch), digits=3))
+	- F1score:  $(round(f1score(roc_test_batch), digits=3))
+
+	The results start to be interesting !
+	"""
+end
 
 # ╔═╡ 1ac1ca44-64a0-43b8-9ec0-b6ae147fe9e6
 md"""
 # Ideas for later
-- Batch
-	DataLoader(x_train, y_train, batchsize=...)
 - Other optimizer (like ADAM)
 	https://fluxml.ai/Flux.jl/stable/training/optimisers/
 - Other losses (like logitcrossentropy)
